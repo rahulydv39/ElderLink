@@ -23,14 +23,15 @@ import {
   normalizePhoneNumber,
   validatePhoneNumber,
 } from '@/lib/utils/phone'
-import { phoneToAuthEmail } from '@/lib/utils/auth-identity'
+import { phoneToAuthEmail, getSafeRedirectUrl } from '@/lib/utils/auth-identity'
 
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
 
-  const redirectTo = searchParams.get('redirectTo') || '/dashboard'
+  const rawRedirectTo = searchParams.get('redirectTo')
+  const redirectTo = getSafeRedirectUrl(rawRedirectTo, '/dashboard')
   const messageParam = searchParams.get('message')
 
   const [countryCode, setCountryCode] = useState('+91')

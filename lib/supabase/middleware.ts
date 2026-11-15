@@ -47,7 +47,8 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/onboarding') ||
     pathname.startsWith('/elder-profiles') ||
-    pathname.startsWith('/care-circle')
+    pathname.startsWith('/care-circle') ||
+    pathname.startsWith('/settings')
 
   if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone()

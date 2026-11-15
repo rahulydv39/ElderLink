@@ -757,14 +757,31 @@ export function MedicationManager({
 
       {/* Skip Dose Modal (Optional Reason Dialog) */}
       {skipModalDose && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="skip-dose-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setSkipModalDose(null)
+              setSkipReason('')
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setSkipModalDose(null)
+              setSkipReason('')
+            }
+          }}
+        >
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
             <div className="flex items-center gap-3 text-amber-600 mb-4">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-950">
                 <AlertTriangle className="h-6 w-6" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                <h3 id="skip-dose-title" className="text-base font-bold text-slate-900 dark:text-white">
                   Mark Dose as Skipped
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -784,8 +801,9 @@ export function MedicationManager({
                 value={skipReason}
                 onChange={(e) => setSkipReason(e.target.value)}
                 className="text-xs"
+                autoFocus
               />
-              <p className="text-[11px] text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Recording a reason helps other caregivers and doctors understand why the dose was skipped.
               </p>
             </div>
@@ -799,7 +817,7 @@ export function MedicationManager({
                   setSkipModalDose(null)
                   setSkipReason('')
                 }}
-                className="rounded-xl text-xs"
+                className="rounded-xl text-xs min-h-[38px] px-4"
               >
                 Cancel
               </Button>
@@ -808,7 +826,7 @@ export function MedicationManager({
                 type="button"
                 size="sm"
                 onClick={() => handleRecordAdherence(skipModalDose, 'skipped', skipReason)}
-                className="rounded-xl bg-amber-600 hover:bg-amber-700 text-xs font-semibold text-white"
+                className="rounded-xl bg-amber-600 hover:bg-amber-700 text-xs font-semibold text-white min-h-[38px] px-4"
               >
                 Confirm Skip
               </Button>

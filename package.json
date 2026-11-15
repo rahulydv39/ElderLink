@@ -1,12 +1,15 @@
 {
   "name": "elderlink",
   "version": "0.1.0",
+  "type": "module",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "node scripts/test-elderlink-core.mjs && node scripts/test-notification-scheduler.mjs",
+    "test:core": "node scripts/test-elderlink-core.mjs",
     "test:email": "node scripts/test-resend.mjs",
     "test:scheduler": "node scripts/test-notification-scheduler.mjs"
   },

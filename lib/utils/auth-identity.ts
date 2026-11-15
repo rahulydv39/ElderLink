@@ -39,3 +39,48 @@ export function isInternalAuthEmail(email: string | null | undefined): boolean {
   if (!email) return false
   return email.toLowerCase().endsWith(`@${AUTH_IDENTIFIER_DOMAIN}`)
 }
+
+/**
+ * Validates and sanitizes a redirect target URL to prevent Open Redirect attacks.
+ * Enforces strict RFC 3986 relative path parsing on the same origin.
+ *
+ * @param target Untrusted target URL string from searchParams or user input
+ * @param fallback Safe default destination (defaults to '/dashboard')
+ * @returns Validated relative path beginning with a single '/'
+ */
+export function getSafeRedirectUrl(
+  target: string | null | undefined,
+  fallback: string = '/dashboard'
+): string {
+  if (!target || typeof target !== 'string') return fallback
+  const trimmed = target.trim()
+  if (!trimmed) return fallback
+
+  // Reject protocol-relative or backslash paths (e.g. "//evil.com", "/\evil.com")
+  if (trimmed.startsWith('//') || trimmed.startsWith('/\\') || trimmed.startsWith('\\')) {
+    return fallback
+  }
+
+  // Must begin with a single forward slash
+  if (!trimmed.startsWith('/')) {
+    return fallback
+  }
+
+  // Reject URIs containing explicit schemes anywhere (e.g. "javascript:", "data:", "http:")
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed) || /javascript:/i.test(trimmed) || /data:/i.test(trimmed)) {
+    return fallback
+  }
+
+  // Verify URL parsing relative to a fixed dummy base to ensure it stays on the path
+  try {
+    const dummyBase = 'http://localhost'
+    const parsed = new URL(trimmed, dummyBase)
+    if (parsed.origin !== dummyBase) {
+      return fallback
+    }
+    // Return relative pathname + search + hash
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`
+  } catch {
+    return fallback
+  }
+}

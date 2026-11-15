@@ -118,21 +118,34 @@ export default async function CareCirclePage({ params }: CareCirclePageProps) {
     )
   }
 
-  // 4. Fetch Owner Profile
-  const { data: ownerProfile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', elder.owner_user_id)
-    .maybeSingle()
+  // 4. Concurrently fetch Owner Profile, Care Circle Members, and Pending Invitations
+  const [
+    { data: ownerProfile },
+    { data: rawMembers },
+    invitationsRes,
+  ] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', elder.owner_user_id)
+      .maybeSingle(),
+    supabase
+      .from('care_circle_members')
+      .select('*')
+      .eq('elder_profile_id', id)
+      .order('created_at', { ascending: true }),
+    (isOwner || canManageMembers)
+      ? supabase
+          .from('care_invitations')
+          .select('id, elder_profile_id, invited_email, assigned_role, expires_at, created_at')
+          .eq('elder_profile_id', id)
+          .is('accepted_at', null)
+          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] }),
+  ])
 
-  // 5. Fetch Care Circle Members
-  const { data: rawMembers } = await supabase
-    .from('care_circle_members')
-    .select('*')
-    .eq('elder_profile_id', id)
-    .order('created_at', { ascending: true })
-
-  // 6. Fetch profiles for all members
+  // 5. Fetch profiles for all members
   let membersWithProfiles: MemberWithProfile[] = []
   if (rawMembers && rawMembers.length > 0) {
     const memberUserIds = rawMembers.map((m) => m.member_user_id)
@@ -149,21 +162,9 @@ export default async function CareCirclePage({ params }: CareCirclePageProps) {
     }))
   }
 
-  // 7. Fetch Pending Invitations (if authorized)
-  let pendingInvitations: PendingInvitationItem[] = []
-  if (isOwner || canManageMembers) {
-    const { data: rawInvitations } = await supabase
-      .from('care_invitations')
-      .select('id, elder_profile_id, invited_email, assigned_role, expires_at, created_at')
-      .eq('elder_profile_id', id)
-      .is('accepted_at', null)
-      .gt('expires_at', new Date().toISOString())
-      .order('created_at', { ascending: false })
-
-    if (rawInvitations) {
-      pendingInvitations = rawInvitations as PendingInvitationItem[]
-    }
-  }
+  // 6. Resolve Pending Invitations
+  const pendingInvitations: PendingInvitationItem[] =
+    (invitationsRes.data as PendingInvitationItem[]) || []
 
   return (
     <div className="min-h-screen bg-slate-50/70 dark:bg-slate-950 flex flex-col">

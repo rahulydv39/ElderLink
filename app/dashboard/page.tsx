@@ -42,53 +42,37 @@ export default async function DashboardPage() {
     redirect('/login?redirectTo=/dashboard')
   }
 
-  // 1. Fetch current user profile
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  // Concurrently execute all independent dashboard queries to eliminate waterfall delays
+  const [
+    { data: profile },
+    { data: elderProfiles },
+    { data: userMemberships },
+    { data: allMemberships },
+    { data: allActiveMeds },
+    { data: allAppointments },
+  ] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('elder_profiles').select('*').order('created_at', { ascending: false }),
+    supabase.from('care_circle_members').select('*').eq('member_user_id', user.id),
+    supabase.from('care_circle_members').select('elder_profile_id'),
+    supabase.from('medications').select('id, elder_profile_id').eq('is_active', true),
+    supabase
+      .from('appointments')
+      .select('*')
+      .eq('status', 'scheduled')
+      .order('appointment_date', { ascending: true }),
+  ])
 
-  // 2. Fetch all elder profiles visible to this user via RLS
-  // (includes profiles owned by user OR shared through care_circle_members)
-  const { data: elderProfiles } = await supabase
-    .from('elder_profiles')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  // 3. Fetch user's own care circle memberships (to know roles on shared profiles)
-  const { data: userMemberships } = await supabase
-    .from('care_circle_members')
-    .select('*')
-    .eq('member_user_id', user.id)
-
-  // 4. Fetch all memberships visible to compute member counts per elder
-  const { data: allMemberships } = await supabase
-    .from('care_circle_members')
-    .select('elder_profile_id')
-
+  // Compute aggregation metrics
   const memberCounts: Record<string, number> = {}
   allMemberships?.forEach((m) => {
     memberCounts[m.elder_profile_id] = (memberCounts[m.elder_profile_id] || 0) + 1
   })
 
-  // 5. Fetch active medications for visible elders
-  const { data: allActiveMeds } = await supabase
-    .from('medications')
-    .select('id, elder_profile_id')
-    .eq('is_active', true)
-
   const activeMedsCounts: Record<string, number> = {}
   allActiveMeds?.forEach((m) => {
     activeMedsCounts[m.elder_profile_id] = (activeMedsCounts[m.elder_profile_id] || 0) + 1
   })
-
-  // 6. Fetch upcoming appointments for visible elders
-  const { data: allAppointments } = await supabase
-    .from('appointments')
-    .select('*')
-    .eq('status', 'scheduled')
-    .order('appointment_date', { ascending: true })
 
   const upcomingApptsCounts: Record<string, number> = {}
   const nextApptSummaryMap: Record<

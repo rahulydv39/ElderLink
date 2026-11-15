@@ -113,19 +113,39 @@ export default async function MedicationsPage({ params }: MedicationsPageProps) 
     )
   }
 
-  // 4. Fetch all medications for this elder
-  const { data: rawMedications } = await supabase
-    .from('medications')
-    .select('*')
-    .eq('elder_profile_id', id)
-    .order('created_at', { ascending: false })
+  // 4. Compute today date string in Asia/Kolkata
+  const todayDateStr = getKolkataTodayDateString()
 
-  // 5. Fetch all schedules for this elder
-  const { data: rawSchedules } = await supabase
-    .from('medication_schedules')
-    .select('*')
-    .eq('elder_profile_id', id)
-    .order('scheduled_time', { ascending: true })
+  // Concurrently fetch medications, schedules, today's logs, and historical adherence logs
+  const [
+    { data: rawMedications },
+    { data: rawSchedules },
+    { data: todayLogs },
+    { data: rawLogs },
+  ] = await Promise.all([
+    supabase
+      .from('medications')
+      .select('*')
+      .eq('elder_profile_id', id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('medication_schedules')
+      .select('*')
+      .eq('elder_profile_id', id)
+      .order('scheduled_time', { ascending: true }),
+    supabase
+      .from('medication_logs')
+      .select('*')
+      .eq('elder_profile_id', id)
+      .gte('scheduled_for', `${todayDateStr}T00:00:00+05:30`)
+      .lte('scheduled_for', `${todayDateStr}T23:59:59+05:30`),
+    supabase
+      .from('medication_logs')
+      .select('*')
+      .eq('elder_profile_id', id)
+      .order('scheduled_for', { ascending: false })
+      .limit(50),
+  ])
 
   // Group schedules by medication ID
   const schedulesByMedId = new Map<string, typeof rawSchedules>()
@@ -139,17 +159,6 @@ export default async function MedicationsPage({ params }: MedicationsPageProps) 
     ...med,
     schedules: schedulesByMedId.get(med.id) || [],
   }))
-
-  // 6. Compute today's scheduled doses
-  const todayDateStr = getKolkataTodayDateString()
-
-  // Fetch today's logs
-  const { data: todayLogs } = await supabase
-    .from('medication_logs')
-    .select('*')
-    .eq('elder_profile_id', id)
-    .gte('scheduled_for', `${todayDateStr}T00:00:00+05:30`)
-    .lte('scheduled_for', `${todayDateStr}T23:59:59+05:30`)
 
   const todayLogsBySchedule = new Map((todayLogs || []).map((l) => [l.schedule_id, l]))
 
@@ -183,14 +192,6 @@ export default async function MedicationsPage({ params }: MedicationsPageProps) 
 
   // Sort today's doses chronologically
   todayDoses.sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime))
-
-  // 7. Fetch Adherence History Logs
-  const { data: rawLogs } = await supabase
-    .from('medication_logs')
-    .select('*')
-    .eq('elder_profile_id', id)
-    .order('scheduled_for', { ascending: false })
-    .limit(50)
 
   const medMap = new Map((rawMedications || []).map((m) => [m.id, m]))
 
