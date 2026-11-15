@@ -1,0 +1,14 @@
+# Supabase CLI and Project Configuration for ElderLink
+project_id = "ehiblqvovrvlfqmolekh"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "auth", "storage"]
+
+# Edge Functions Configuration
+# JWT verification is disabled for process-elderlink-notifications because
+# it is triggered by pg_cron / pg_net and performs its own dedicated
+# constant-time ELDERLINK_CRON_SECRET bearer token verification.
+[functions.process-elderlink-notifications]
+verify_jwt = false

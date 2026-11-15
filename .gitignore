@@ -30,12 +30,27 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files
+.env*.local
+.env.local
+.env
+!.env.example
 
 # vercel
 .vercel
 
+# Environment variables
+.env*
+!.env.example
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.env*
+
+
+
+# Local tooling and temporary files
+.kiro/
+supabase/.temp/
+*.textClipping
